@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    @apply h-full bg-white text-gray-900 antialiased;
+  }
+}
+
+@layer utilities {
+  .container { @apply mx-auto px-4 w-full max-w-7xl; }
+  .text-muted-foreground { @apply text-gray-500; }
+}
+
