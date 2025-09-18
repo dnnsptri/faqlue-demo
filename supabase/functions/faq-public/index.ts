@@ -367,8 +367,16 @@ Deno.serve(async (req) => {
       "Wat is de actuele levertijd?"
     ];
 
-    // Sort items according to the predefined order
+    // Helper: badge priority (NEW -> UPDATED -> none -> STALE)
+    const getBadgePriority = (badge: string | null) =>
+      badge === "NEW" ? 0 : badge === "UPDATED" ? 1 : badge === "STALE" ? 3 : 2;
+
+    // Sort items by badge priority first, then by predefined question order
     const orderedItems = itemsWithBadges.sort((a, b) => {
+      const pa = getBadgePriority(a.badge as any);
+      const pb = getBadgePriority(b.badge as any);
+      if (pa !== pb) return pa - pb;
+
       const indexA = questionOrder.findIndex(q => 
         a.question.toLowerCase().includes(q.toLowerCase()) || 
         q.toLowerCase().includes(a.question.toLowerCase())
@@ -377,7 +385,7 @@ Deno.serve(async (req) => {
         b.question.toLowerCase().includes(q.toLowerCase()) || 
         q.toLowerCase().includes(b.question.toLowerCase())
       );
-      
+
       // If both items are found in the order, sort by their position
       if (indexA !== -1 && indexB !== -1) {
         return indexA - indexB;
