@@ -117,3 +117,6 @@ VALUES
     'Uw bank kan gekoppeld worden via onze app. Download de app en volg de instructies.',
     NOW() - INTERVAL '3 hours'
   );
+
+-- 4. Test the API endpoint
+-- After running this, test: GET /api/faq/designonstock

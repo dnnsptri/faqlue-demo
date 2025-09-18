@@ -39,21 +39,6 @@ function BadgePill({ kind }: { kind?: FaqItem["badge"] }) {
 }
 
 
-type ExternalSearchResult = {
-  title: string;
-  description: string;
-  url: string;
-  isFallback?: boolean;
-};
-
-type ExternalSearchResponse = {
-  success: boolean;
-  query: string;
-  results: ExternalSearchResult[];
-  searchUrl: string;
-  totalResults: number;
-  fallback?: boolean;
-};
 
 export default function FaqClient({ context }: { context: string }) {
   const [query, setQuery] = React.useState("");
@@ -61,8 +46,6 @@ export default function FaqClient({ context }: { context: string }) {
   const [loading, setLoading] = React.useState(true);
   const MAX_VISIBLE = 12;
   const [openItems, setOpenItems] = React.useState<Set<string>>(new Set());
-  const [externalSearchResults, setExternalSearchResults] = React.useState<ExternalSearchResponse | null>(null);
-  const [searchingExternal, setSearchingExternal] = React.useState(false);
 
   // Log search events
   const logSearch = async (searchQuery: string) => {
@@ -90,30 +73,6 @@ export default function FaqClient({ context }: { context: string }) {
     }
   };
 
-  // Search external website when no FAQ results found
-  const searchExternal = async (searchQuery: string) => {
-    if (!searchQuery.trim()) return;
-    
-    setSearchingExternal(true);
-    setExternalSearchResults(null);
-    
-    try {
-      const response = await fetch("/api/search-external", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: searchQuery }),
-      });
-      
-      if (response.ok) {
-        const data = await response.json() as ExternalSearchResponse;
-        setExternalSearchResults(data);
-      }
-    } catch (error) {
-      console.error("External search failed:", error);
-    } finally {
-      setSearchingExternal(false);
-    }
-  };
 
 
   React.useEffect(() => {
@@ -164,14 +123,6 @@ export default function FaqClient({ context }: { context: string }) {
 
   const items = React.useMemo(() => sorted.slice(0, MAX_VISIBLE), [sorted]);
 
-  // Trigger external search when no FAQ results found
-  React.useEffect(() => {
-    if (query.trim() && items.length === 0 && data?.items && data.items.length > 0) {
-      searchExternal(query.trim());
-    } else if (!query.trim()) {
-      setExternalSearchResults(null);
-    }
-  }, [query, items.length, data?.items?.length]);
 
   if (loading) return <div>Vragen worden opgehaald…</div>;
   if (!data) return <div>Geen data.</div>;
@@ -207,7 +158,7 @@ export default function FaqClient({ context }: { context: string }) {
               }} 
               className="px-3 py-2 text-sm"
             >
-              Zoek
+              Filter
             </Button>
           </div>
         </div>
@@ -287,53 +238,19 @@ export default function FaqClient({ context }: { context: string }) {
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Geen resultaten voor "{query}".</p>
               
-              {searchingExternal && (
-                <div className="text-sm text-muted-foreground">
-                  Zoeken op Design on Stock website...
-                </div>
-              )}
-              
-              {externalSearchResults && (
-                <div className="space-y-3">
-                  <div className="border-t pt-4">
-                    <h3 className="text-sm font-medium text-gray-900 mb-3">
-                      Zoekresultaten van Design on Stock:
-                    </h3>
-                    <div className="space-y-3">
-                      {externalSearchResults.results.map((result, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <a
-                            href={result.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block group"
-                          >
-                            <h4 className="text-sm font-medium text-blue-600 group-hover:text-blue-800 mb-1">
-                              {result.title}
-                            </h4>
-                            <p className="text-xs text-gray-600 mb-2">
-                              {result.description}
-                            </p>
-                            <span className="text-xs text-blue-500 group-hover:text-blue-700">
-                              {result.url}
-                            </span>
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3">
-                      <a
-                        href={externalSearchResults.searchUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                      >
-                        Bekijk alle resultaten op Design on Stock →
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <div className="border-t pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Nog steeds geen resultaat? Neem dan contact op via ons{" "}
+                  <a
+                    href="https://www.designonstock.com/contact"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-black underline hover:no-underline"
+                  >
+                    contactformulier
+                  </a>
+                </p>
+              </div>
             </div>
           )}
         </div>

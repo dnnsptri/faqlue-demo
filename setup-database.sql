@@ -1,12 +1,91 @@
--- Test data for FAQlue demo (Fixed for existing schema)
--- Run this in your Supabase SQL editor
+-- Complete database setup for FAQlue demo
+-- Run this in your Supabase SQL Editor
 
--- 1. Insert test context if it doesn't exist (without description column)
-INSERT INTO faq_contexts (context_slug, name)
-VALUES ('designonstock', 'Design on Stock')
+-- 1. Create faq_contexts table
+CREATE TABLE IF NOT EXISTS faq_contexts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  context_slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. Create faq_sources table
+CREATE TABLE IF NOT EXISTS faq_sources (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  context_id UUID NOT NULL REFERENCES faq_contexts(id) ON DELETE CASCADE,
+  url TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Create faq_items table
+CREATE TABLE IF NOT EXISTS faq_items (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  context_id UUID NOT NULL REFERENCES faq_contexts(id) ON DELETE CASCADE,
+  source_id UUID REFERENCES faq_sources(id) ON DELETE SET NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  question_hash TEXT NOT NULL,
+  is_published BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(context_id, question_hash)
+);
+
+-- 4. Create faq_changes table
+CREATE TABLE IF NOT EXISTS faq_changes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  item_id UUID NOT NULL REFERENCES faq_items(id) ON DELETE CASCADE,
+  change_type TEXT NOT NULL CHECK (change_type IN ('NEW', 'UPDATED', 'STALE')),
+  before_answer TEXT,
+  after_answer TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_faq_items_context_id ON faq_items(context_id);
+CREATE INDEX IF NOT EXISTS idx_faq_items_question_hash ON faq_items(question_hash);
+CREATE INDEX IF NOT EXISTS idx_faq_items_is_published ON faq_items(is_published);
+CREATE INDEX IF NOT EXISTS idx_faq_changes_item_id ON faq_changes(item_id);
+CREATE INDEX IF NOT EXISTS idx_faq_changes_created_at ON faq_changes(created_at DESC);
+
+-- 6. Enable Row Level Security (RLS)
+ALTER TABLE faq_contexts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faq_sources ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faq_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faq_changes ENABLE ROW LEVEL SECURITY;
+
+-- 7. Create policies for public read access
+CREATE POLICY "Allow public read access to faq_contexts" ON faq_contexts
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public read access to faq_sources" ON faq_sources
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow public read access to faq_items" ON faq_items
+  FOR SELECT USING (is_published = true);
+
+CREATE POLICY "Allow public read access to faq_changes" ON faq_changes
+  FOR SELECT USING (true);
+
+-- 8. Create policies for service role management
+CREATE POLICY "Allow service role to manage faq_contexts" ON faq_contexts
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Allow service role to manage faq_sources" ON faq_sources
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Allow service role to manage faq_items" ON faq_items
+  FOR ALL USING (auth.role() = 'service_role');
+
+CREATE POLICY "Allow service role to manage faq_changes" ON faq_changes
+  FOR ALL USING (auth.role() = 'service_role');
+
+-- 9. Insert test context
+INSERT INTO faq_contexts (context_slug, name, description)
+VALUES ('designonstock', 'Design on Stock', 'Furniture FAQ for Design on Stock')
 ON CONFLICT (context_slug) DO NOTHING;
 
--- 2. Insert test FAQ items
+-- 10. Insert test FAQ items
 INSERT INTO faq_items (context_id, question, answer, question_hash, is_published, updated_at)
 VALUES 
   (
@@ -93,7 +172,7 @@ ON CONFLICT (context_id, question_hash) DO UPDATE SET
   answer = EXCLUDED.answer,
   updated_at = EXCLUDED.updated_at;
 
--- 3. Insert some test changes to simulate NEW/UPDATED badges
+-- 11. Insert some test changes to simulate NEW/UPDATED badges
 INSERT INTO faq_changes (item_id, change_type, before_answer, after_answer, created_at)
 VALUES 
   (
@@ -117,3 +196,10 @@ VALUES
     'Uw bank kan gekoppeld worden via onze app. Download de app en volg de instructies.',
     NOW() - INTERVAL '3 hours'
   );
+
+-- 12. Verify the setup
+SELECT 
+  'Tables created successfully' as status,
+  (SELECT COUNT(*) FROM faq_contexts) as contexts,
+  (SELECT COUNT(*) FROM faq_items) as items,
+  (SELECT COUNT(*) FROM faq_changes) as changes;
