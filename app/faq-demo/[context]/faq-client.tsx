@@ -118,7 +118,20 @@ export default function FaqClient({ context }: { context: string }) {
 
   const sorted = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return [...filtered].sort((a, b) => scoreItem(b, q) - scoreItem(a, q));
+    // If there is a search query, sort by relevance
+    if (q) {
+      return [...filtered].sort((a, b) => scoreItem(b, q) - scoreItem(a, q));
+    }
+    // No query: enforce badge priority NEW -> UPDATED -> none -> STALE, then preserve original order
+    const badgePriority = (badge?: FaqItem["badge"]) =>
+      badge === "NEW" ? 0 : badge === "UPDATED" ? 1 : badge === "STALE" ? 3 : 2;
+    return [...filtered].sort((a, b) => {
+      const pa = badgePriority(a.badge);
+      const pb = badgePriority(b.badge);
+      if (pa !== pb) return pa - pb;
+      // stable: keep original relative order when same priority
+      return filtered.indexOf(a) - filtered.indexOf(b);
+    });
   }, [filtered, query]);
 
   const items = React.useMemo(() => sorted.slice(0, MAX_VISIBLE), [sorted]);
