@@ -89,6 +89,18 @@ export default function FaqClient({ context }: { context: string }) {
     return () => { cancelled = true; };
   }, [context]);
 
+  // Auto-refresh every 60 seconds to reflect DB changes in demo
+  React.useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/faq/${context}`, { cache: "no-store" });
+        const json = (await res.json()) as FaqResponse;
+        setData(json);
+      } catch {}
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [context]);
+
   function scoreItem(it: FaqItem, q: string) {
     // Only use search-based scoring, not click-based
     if (q) {
@@ -176,8 +188,8 @@ export default function FaqClient({ context }: { context: string }) {
           </div>
         </div>
 
-        {/* Tiny stats (optional) */}
-        {data.stats && (data.stats.new > 0 || data.stats.updated > 0) && (
+        {/* Tiny stats */}
+        {data.stats && (
           <div className="mt-4 text-sm text-muted-foreground">
             Nieuw: {data.stats.new} · Bijgewerkt: {data.stats.updated}
           </div>
