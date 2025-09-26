@@ -373,15 +373,17 @@ Deno.serve(async (req) => {
 
     // Count recent clicks in the last 24 hours
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: clickCounts } = await db
+    const { data: recentClicks } = await db
       .from("faq_events")
-      .select("item_id, count:id")
+      .select("item_id")
       .eq("event_type", "click")
       .gte("created_at", since)
       .in("item_id", (items ?? []).map((x) => x.id));
     const clicksMap = new Map<string, number>();
-    for (const row of clickCounts ?? []) {
-      clicksMap.set((row as any).item_id, Number((row as any).count) || 0);
+    for (const rc of recentClicks ?? []) {
+      const id = (rc as any).item_id as string | null;
+      if (!id) continue;
+      clicksMap.set(id, (clicksMap.get(id) || 0) + 1);
     }
 
     // Sort items by badge priority first, then recent click counts, then by predefined question order
