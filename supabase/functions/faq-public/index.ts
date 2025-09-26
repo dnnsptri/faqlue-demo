@@ -397,7 +397,15 @@ Deno.serve(async (req) => {
       return 0;
     });
 
-    return json({ context: contextSlug, items: orderedItems });
+    // Compute simple stats for client display
+    const stats = {
+      total: itemsWithBadges.length,
+      new: itemsWithBadges.filter((x) => x.badge === "NEW").length,
+      updated: itemsWithBadges.filter((x) => x.badge === "UPDATED").length,
+      stale: itemsWithBadges.filter((x) => x.badge === "STALE").length,
+    };
+
+    return json({ context: contextSlug, items: orderedItems, stats });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }
