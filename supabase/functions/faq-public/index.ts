@@ -371,30 +371,11 @@ Deno.serve(async (req) => {
     const getBadgePriority = (badge: string | null) =>
       badge === "NEW" ? 0 : badge === "UPDATED" ? 1 : badge === "STALE" ? 3 : 2;
 
-    // Count recent clicks in the last 24 hours
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: recentClicks } = await db
-      .from("faq_events")
-      .select("item_id")
-      .eq("event_type", "click")
-      .gte("created_at", since)
-      .in("item_id", (items ?? []).map((x) => x.id));
-    const clicksMap = new Map<string, number>();
-    for (const rc of recentClicks ?? []) {
-      const id = (rc as any).item_id as string | null;
-      if (!id) continue;
-      clicksMap.set(id, (clicksMap.get(id) || 0) + 1);
-    }
-
-    // Sort items by badge priority first, then recent click counts, then by predefined question order
+    // Sort items by badge priority first, then by predefined question order
     const orderedItems = itemsWithBadges.sort((a, b) => {
       const pa = getBadgePriority(a.badge as any);
       const pb = getBadgePriority(b.badge as any);
       if (pa !== pb) return pa - pb;
-
-      const ca = clicksMap.get(a.id) || 0;
-      const cb = clicksMap.get(b.id) || 0;
-      if (ca !== cb) return cb - ca; // more clicks first
 
       const indexA = questionOrder.findIndex(q => 
         a.question.toLowerCase().includes(q.toLowerCase()) || 
@@ -416,15 +397,7 @@ Deno.serve(async (req) => {
       return 0;
     });
 
-    // Compute simple stats for client display
-    const stats = {
-      total: itemsWithBadges.length,
-      new: itemsWithBadges.filter((x) => x.badge === "NEW").length,
-      updated: itemsWithBadges.filter((x) => x.badge === "UPDATED").length,
-      stale: itemsWithBadges.filter((x) => x.badge === "STALE").length,
-    };
-
-    return json({ context: contextSlug, items: orderedItems, stats });
+    return json({ context: contextSlug, items: orderedItems });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

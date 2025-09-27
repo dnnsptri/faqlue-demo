@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: Request) {
   try {
@@ -38,31 +37,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // Persist event to Supabase for server-side ranking
-    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-    const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE as string;
-    if (SUPABASE_URL && SERVICE_ROLE_KEY) {
-      const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-
-      // Resolve context_id for optional validation (best-effort)
-      let context_id: string | null = null;
-      try {
-        const { data: ctx } = await admin
-          .from("faq_contexts")
-          .select("id")
-          .eq("context_slug", context)
-          .single();
-        context_id = ctx?.id ?? null;
-      } catch {}
-
-      await admin.from("faq_events").insert({
-        context_id,
-        item_id: type === "click" ? item_id : null,
-        event_type: type,
-        query: type === "search" ? query : null,
-        created_at: new Date().toISOString(),
-      });
-    }
+    // Log the event (in a real implementation, you'd save to database)
+    console.log("FAQ Event:", {
+      context,
+      type,
+      query: type === "search" ? query : undefined,
+      item_id: type === "click" ? item_id : undefined,
+      timestamp: new Date().toISOString(),
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

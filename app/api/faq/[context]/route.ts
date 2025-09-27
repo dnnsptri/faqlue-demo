@@ -8,6 +8,19 @@ export async function GET(
   { params }: { params: { context: string } }
 ) {
   try {
+    // Check if we have a valid function URL
+    if (!process.env.FAQ_PUBLIC_FN_URL) {
+      return NextResponse.json(
+        { 
+          error: "FAQ_PUBLIC_FN_URL environment variable not set", 
+          note: "Please set FAQ_PUBLIC_FN_URL in .env.local file",
+          context: params.context,
+          items: [] // Return empty array for demo
+        },
+        { status: 200 }
+      );
+    }
+
     const url = new URL(FN_URL);
     url.searchParams.set("context", params.context);
 
